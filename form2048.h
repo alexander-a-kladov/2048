@@ -46,7 +46,7 @@ class Form2048 : public QWidget {
 	
 	void loadImages()
 	{
-	    const char *icons_path = "/usr/share/icons/lol/48x48/apps/";
+	    const char *icons_path = "/usr/share/icons/hicolor/48x48/apps/";
 	    const char *templ_str = "*.png";
 
 	    int i,j;
@@ -54,9 +54,9 @@ class Form2048 : public QWidget {
 	    pix_enable = false;
 	    QDir dir(icons_path, templ_str);
 	//    cout << dir.entryList().count() << endl;
-	    if (dir.entryList().count()<40) return;
+	    if (dir.entryList().count()<NUM_DIGITS) return;
 	    for (i=0;i<NUM_DIGITS;i++) {
-		pix_mas[i] = new QPixmap(icons_path+dir.entryList()[i+20]);
+		pix_mas[i] = new QPixmap(icons_path+dir.entryList()[i]);
 	    }
 	    pix_enable = true;
 	    return;
