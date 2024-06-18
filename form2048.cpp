@@ -41,16 +41,12 @@ void Form2048::paintEvent(QPaintEvent *ev)
 	p.drawLine(i*FIELD_WIDTH,0,i*FIELD_WIDTH,width());
 	p.drawLine(0,i*FIELD_WIDTH,height(),i*FIELD_WIDTH);
     }
-    
-//    if (win_game)  p.drawText(0,height()/2,"Champion!!!");
-    if (fail_game) p.drawText(0,height()/2,"Fail game!");
     return;
 }
 
 void Form2048::keyPressEvent(QKeyEvent *ev)
 {
     int dir;
-    bool ismove;
     TMoveStack mstack_local;
     switch (ev->key())
     {
@@ -93,166 +89,86 @@ void Form2048::keyPressEvent(QKeyEvent *ev)
 	case Qt::Key_R:
 	    initGame();
 	    if (!fname.isEmpty()) {
-		if (loadState(fname)) setWindowTitle("Load OK!");
+		if (loadState()) setWindowTitle("Load OK!");
 		else setWindowTitle("Load Fail!");
 	    }
 	    repaint();
 	    return;
 	    break;
 	case Qt::Key_S:
-	    if (fname.isEmpty()) fname = "state.txt";
-	    if (saveState(fname)) setWindowTitle("Save OK!");
+	    if (saveState()) setWindowTitle("Save OK!");
 	    else setWindowTitle("Save Fail!");
 	    return;
 	    break;
 	default:
 	    dir = DONT_MOVE;
     }
+    if (dir!=DONT_MOVE) {
     push_mstack(&mstack_local);
-    ismove = moveAll(dir);
-//    cout << "ismove1 = " << ismove << endl;
-    ismove |= summUp(dir);
-//    cout << "ismove2 = " << ismove << endl;
-    //cout << "win game = " << win_game << endl;
-    ismove |= moveAll(dir);
-//    cout << "ismove3 = " << ismove << endl;
+    rotateLeft(dir);
+    bool ismove;
+    ismove = moveLeft();
+    ismove |= summUpLeft();
+    ismove |= moveLeft();
+    rotateLeft(4-dir);
     if (ismove) {
 	move_stack.push(mstack_local);
 	fail_game = !setNewDigit();
+    }
     }
     setWindowTitle(QString("2048: Score = %1 %2").arg(score).arg(fname));
     repaint();
     return;
 }
 
-bool Form2048::moveAll(int dir)
+void Form2048::rotateLeft(int counter)
 {
-//    cout << "dir = " << dir << endl;
+    if (counter<0) return;
+    counter %= 4;
+    for (int i=0; i<counter; ++i) {
+    int line[FIELD_SIZE*FIELD_SIZE];
+    memcpy(line, field, sizeof(line));
+    for (int j=0;j<FIELD_SIZE;++j) {
+    for (int i=0;i<FIELD_SIZE;++i) {
+        int tondex = (FIELD_SIZE-1-i)*FIELD_SIZE+j;
+        int fromdex = j*FIELD_SIZE+i;
+        field[tondex] = line[fromdex];
+    }
+    }
+    }
+}
+
+bool Form2048::moveLeft() {
     int index;
     int pos;
     int line[FIELD_SIZE];
     bool ischange=false;
-    switch (dir) {
-	case MOVE_LEFT:
-	    for (int i=0;i<FIELD_SIZE;i++) {
-		pos = 0;
-		memset(line,0,sizeof(line));
-		for (int j=0;j<FIELD_SIZE;j++) {
-		    index = i*FIELD_SIZE+j;
-		    if (field[index]) line[pos++] = field[index];
-		}
-		if (memcmp(&field[i*FIELD_SIZE],line,sizeof(line))!=0) ischange = true;
-		memcpy(&field[i*FIELD_SIZE],line,sizeof(line));
-	    }
-	    break;
-	case MOVE_RIGHT:
-	    for (int i=0;i<FIELD_SIZE;i++) {
-		pos = FIELD_SIZE-1;
-		memset(line,0,sizeof(line));
-		for (int j=FIELD_SIZE-1;j>=0;j--) {
-		    index = i*FIELD_SIZE+j;
-		    if (field[index]) line[pos--] = field[index];
-		}
-		if (memcmp(&field[i*FIELD_SIZE],line,sizeof(line))!=0) ischange = true;
-		memcpy(&field[i*FIELD_SIZE],line,sizeof(line));
-	    }
-	    break;
-	case MOVE_UP:
-	    for (int j=0;j<FIELD_SIZE;j++) {
-		pos = 0;
-		memset(line,0,sizeof(line));
-		for (int i=0;i<FIELD_SIZE;i++) {
-		    index = i*FIELD_SIZE+j;
-		    if (field[index]) line[pos++] = field[index];
-		}
-		for (int i=0;i<FIELD_SIZE;i++)
-		    if (field[i*FIELD_SIZE+j]!=line[i]) ischange = true;
-		for (int i=0;i<FIELD_SIZE;i++)
-		    field[i*FIELD_SIZE+j]=line[i];
-	    }
-	    break;
-	case MOVE_DOWN:
-	    for (int j=0;j<FIELD_SIZE;j++) {
-		pos = FIELD_SIZE-1;
-		memset(line,0,sizeof(line));
-		for (int i=FIELD_SIZE-1;i>=0;i--) {
-		    index = i*FIELD_SIZE+j;
-		    if (field[index]) line[pos--] = field[index];
-		}
-		for (int i=0;i<FIELD_SIZE;i++)
-		    if (field[i*FIELD_SIZE+j]!=line[i]) ischange = true;
-		for (int i=0;i<FIELD_SIZE;i++)
-		    field[i*FIELD_SIZE+j]=line[i];
-	    }
-	    break;
+    for (int i=0;i<FIELD_SIZE;i++) {
+	pos = 0;
+	memset(line,0,sizeof(line));
+	for (int j=0;j<FIELD_SIZE;j++) {
+	    index = i*FIELD_SIZE+j;
+	    if (field[index]) line[pos++] = field[index];
+	}
+	if (memcmp(&field[i*FIELD_SIZE],line,sizeof(line))!=0) ischange = true;
+	memcpy(&field[i*FIELD_SIZE],line,sizeof(line));
     }
     return ischange;
 }
 
-bool Form2048::summUpElement(int i, int j, int *check_value, int *pos)
+bool Form2048::summUpLeft()
 {
     bool ischange=false;
-    if (*check_value) {
-		if (*check_value==field[i*FIELD_SIZE+j]) {
-		    field[*pos]=0;
-		    field[i*FIELD_SIZE+j]++;
-		    //if (field[i*FIELD_SIZE+j]==(NUM_DIGITS-1)) 
-		//	win_game = true;
-		    *check_value=0;
-		    ischange = true;
-		    free_cells++;
-		    score+=values[field[i*FIELD_SIZE+j]];
-		    } else {
-			*check_value = field[i*FIELD_SIZE+j];
-			*pos = i*FIELD_SIZE+j;
-		    }
-	    } else {
-		*check_value = field[i*FIELD_SIZE+j];
-		*pos = i*FIELD_SIZE+j;
-    }
-    return ischange;
-}
-
-bool Form2048::summUp(int dir)
-{
-    int check_value,pos;
-    bool ischange=false;
-    switch(dir)
-    {
-	case MOVE_LEFT:
-	    for (int i=0;i<FIELD_SIZE;i++) {
-		check_value=0;
-		for (int j=0;j<FIELD_SIZE;j++) {
-		    ischange |= summUpElement(i,j,&check_value,&pos);
-		}
+    for (int i=0;i<FIELD_SIZE;i++) {
+	for (int j=0;j<FIELD_SIZE-1;j++) {
+	    int index = i*FIELD_SIZE + j;
+	    if (field[index] and field[index]==field[index+1]) {
+	        field[index]+=1;
+	        field[index+1]=0;
+	        free_cells++;
+	        ischange = true;
 	    }
-	    break;
-	case MOVE_RIGHT:
-	    for (int i=0;i<FIELD_SIZE;i++) {
-		check_value=0;
-		for (int j=FIELD_SIZE-1;j>=0;j--) {
-		    ischange |= summUpElement(i,j,&check_value,&pos);
-		}
-	    }
-	    break;
-	case MOVE_UP:
-	    for (int j=0;j<FIELD_SIZE;j++) {
-		check_value=0;
-		for (int i=0;i<FIELD_SIZE;i++) {
-		    ischange |= summUpElement(i,j,&check_value,&pos);
-		}
-	    }
-	    break;
-	case MOVE_DOWN:
-	    for (int j=0;j<FIELD_SIZE;j++) {
-		check_value=0;
-		for (int i=FIELD_SIZE-1;i>=0;i--) {
-		    ischange |= summUpElement(i,j,&check_value,&pos);
-		}
-	    }
-	    break;
-	default:
-	    break;
+	}
     }
     return ischange;
 }

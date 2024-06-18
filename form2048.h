@@ -12,11 +12,11 @@
 #define __FORM_2048_H__
 
 enum EDIRECTION {
-    DONT_MOVE,
+    DONT_MOVE=-1,
     MOVE_LEFT,
+    MOVE_UP,
     MOVE_RIGHT,
-    MOVE_DOWN,
-    MOVE_UP
+    MOVE_DOWN
 };
 
 const int FIELD_SIZE=4;
@@ -53,7 +53,6 @@ class Form2048 : public QWidget {
 	    pix_prz = false;
 	    pix_enable = false;
 	    QDir dir(icons_path, templ_str);
-	//    cout << dir.entryList().count() << endl;
 	    if (dir.entryList().count()<NUM_DIGITS) return;
 	    for (i=0;i<NUM_DIGITS;i++) {
 		pix_mas[i] = new QPixmap(icons_path+dir.entryList()[i]);
@@ -76,7 +75,11 @@ class Form2048 : public QWidget {
 	    return;
 	}
 	
-	bool saveState(QString name)
+	void setStateFile(QString name) {
+	    fname = name;
+	}
+	
+	bool saveState()
 	{
 	    QFile file;
 	    QString str;
@@ -85,7 +88,7 @@ class Form2048 : public QWidget {
 	    for (int j=0;j<FIELD_SIZE;j++) 
 		str+=QString("%1").arg(field[i*FIELD_SIZE+j],1,NUM_DIGITS);
 	    }
-	    file.setFileName(name);
+	    file.setFileName(fname);
 	    if (file.open(QIODevice::WriteOnly)) {
 		QTextStream out(&file);
 		out << str;
@@ -95,21 +98,19 @@ class Form2048 : public QWidget {
 	    return res;
 	}
 	
-	bool loadState(QString name)
+	bool loadState()
 	{
 	    QFile file;
 	    QString str;
 	    bool ok,res=false;
-	    file.setFileName(name);
+	    file.setFileName(fname);
 	    if (file.open(QIODevice::ReadOnly)) {
-		fname = name;
 		QTextStream in(&file);
 		in >> str;
 		res = true;
 		file.close();
 	    }
 	    free_cells = 0;
-	    //cout << "str.length() = " << str.length() << endl;
 	    if (str.length()<CELL_NUMBER) {initGame();return res;}
 	    for (int i=0;i<FIELD_SIZE;i++)
 	    for (int j=0;j<FIELD_SIZE;j++) {
@@ -124,10 +125,8 @@ class Form2048 : public QWidget {
 	{
 	    int pos;
 	    int i=0,j;
-	    //static int counter=1;
 	    if (!free_cells) return false;
 	    pos = rand()%free_cells;
-	//    cout << "pos = " << pos << endl;
 	    j=0;
 	    while (field[j]) {j++;}
 	    while (i<pos) {
@@ -137,14 +136,12 @@ class Form2048 : public QWidget {
 	    new_pos = j;
 	    field[j] = ((rand()%10)==9)?2:1;
 	    free_cells--;
-	    //counter %= 12;
-	    //if (!counter) counter = 1;
 	    return true;
 	}
 	
-	bool moveAll(int dir);
-	bool summUp(int dir);
-	bool summUpElement(int i, int j, int *check_value, int *pos);
+	bool moveLeft();
+	void rotateLeft(int counter);
+	bool summUpLeft();
 	bool fail_game;
     protected:
 	void paintEvent(QPaintEvent *ev);
